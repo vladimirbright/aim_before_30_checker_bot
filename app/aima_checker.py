@@ -31,7 +31,11 @@ async def get_login_token(client: httpx.AsyncClient) -> str:
     Raises:
         Exception: If token cannot be found
     """
-    response = await client.get(settings.aima_login_url, timeout=30.0)
+    response = await client.get(
+        settings.aima_login_url,
+        timeout=30.0,
+        verify=settings.verify_ssl
+    )
     response.raise_for_status()
 
     soup = BeautifulSoup(response.text, 'lxml')
@@ -96,7 +100,8 @@ async def login_and_get_status(email: str, password: str) -> Dict:
         # Create client with cookies enabled
         async with httpx.AsyncClient(
             follow_redirects=True,
-            timeout=30.0
+            timeout=30.0,
+            verify=settings.verify_ssl
         ) as client:
 
             # Step 1: Get CSRF token
@@ -112,7 +117,8 @@ async def login_and_get_status(email: str, password: str) -> Dict:
             response = await client.post(
                 settings.aima_check_url,
                 data=login_data,
-                timeout=30.0
+                timeout=30.0,
+                verify=settings.verify_ssl
             )
 
             # Check if login was successful
