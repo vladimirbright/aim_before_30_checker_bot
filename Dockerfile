@@ -1,20 +1,25 @@
 # Multi-stage build for AIMA Status Checker
 
-# Stage 1: Builder - Export dependencies
+# Stage 1: Builder - Install dependencies with Poetry
 FROM python:3.11-slim as builder
 
-# Install poetry
+# Install Poetry
 RUN pip install --no-cache-dir poetry==1.7.1
 
 WORKDIR /app
 
-# Copy poetry files
-COPY pyproject.toml ./
+# Copy dependency files (poetry.lock* allows build even if lock file is missing)
+COPY pyproject.toml poetry.lock* ./
 
-# Export dependencies to requirements.txt
-RUN poetry export -f requirements.txt -o requirements.txt --without-hashes --without dev
+# Configure Poetry to create virtualenv in project directory
+RUN poetry config virtualenvs.in-project true
 
-# Stage 2: Runtime
+# Install dependencies with hash verification from poetry.lock
+# --no-root: Don't install the project itself, only dependencies
+# --only main: Skip dev dependencies
+RUN poetry install --no-root --only main
+
+# Stage 2: Runtime - Copy venv and run application
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -24,11 +29,8 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends curl && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy requirements from builder
-COPY --from=builder /app/requirements.txt .
-
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy virtual environment from builder stage
+COPY --from=builder /app/.venv /app/.venv
 
 # Copy application code
 COPY app ./app
@@ -43,5 +45,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Run application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run application using virtual environment's Python
+CMD ["/app/.venv/bin/python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
