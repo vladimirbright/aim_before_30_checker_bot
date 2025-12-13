@@ -1,6 +1,5 @@
 """AIMA website scraper for checking application status."""
 
-import re
 import logging
 from datetime import datetime
 from typing import Dict
@@ -112,11 +111,18 @@ async def login_and_get_status(email: str, password: str) -> Dict:
     logger.debug(f"Login URL: {settings.aima_login_url}")
     logger.debug(f"Check URL: {settings.aima_check_url}")
 
+    timeout = httpx.Timeout(
+        connect=10.0,
+        read=120.0,
+        write=120.0,
+        pool=120.0,
+    )
+
     try:
         # Create client with cookies enabled
         async with httpx.AsyncClient(
             follow_redirects=True,
-            timeout=30.0,
+            timeout=timeout,
             verify=settings.verify_ssl
         ) as client:
 
