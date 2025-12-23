@@ -90,6 +90,8 @@ async def login_and_get_status(email: str, password: str) -> Dict:
     """
     Login to AIMA website and retrieve application status.
 
+    All HTTP requests will use the configured proxy if PROXY_URL is set in settings.
+
     Args:
         email: User email address
         password: User password
@@ -108,6 +110,7 @@ async def login_and_get_status(email: str, password: str) -> Dict:
 
     logger.info(f"Starting AIMA status check for {email}")
     logger.debug(f"SSL verification: {settings.verify_ssl}")
+    logger.debug(f"Proxy: {'Configured' if settings.proxy_url else 'Not configured'}")
     logger.debug(f"Login URL: {settings.aima_login_url}")
     logger.debug(f"Check URL: {settings.aima_check_url}")
 
@@ -123,7 +126,8 @@ async def login_and_get_status(email: str, password: str) -> Dict:
         async with httpx.AsyncClient(
             follow_redirects=True,
             timeout=timeout,
-            verify=settings.verify_ssl
+            verify=settings.verify_ssl,
+            proxy=settings.proxy_url
         ) as client:
 
             logger.debug("Created HTTP client")

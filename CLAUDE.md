@@ -52,6 +52,7 @@ Both the Telegram bot and web interface run concurrently in the same FastAPI pro
 - Parses HTML to find status in salmon-colored table cell (`<td style="background-color: salmon;">`)
 - Status text is extracted from `<ul>` tag and sanitized
 - Saves response HTML to `/tmp/aima_response.html` for debugging
+- **Proxy support**: If `PROXY_URL` is configured, all requests route through the specified proxy
 
 **Encryption (app/crypto.py)**
 - Per-user encryption using Fernet symmetric encryption
@@ -79,6 +80,10 @@ Settings loaded from environment variables using pydantic-settings:
 - `LOG_LEVEL` (default: `INFO`)
 - `AIMA_LOGIN_URL` and `AIMA_CHECK_URL` (AIMA endpoints)
 - `VERIFY_SSL` (default: `False` - AIMA has certificate issues)
+- `PROXY_URL` (optional) - HTTP/HTTPS proxy URL in format `http://user:pass@host:port`
+  - If configured, all AIMA requests will route through this proxy
+  - Credentials are masked in logs for security
+  - Leave empty/unset to use direct connection
 
 ### Project Structure
 ```
