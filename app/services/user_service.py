@@ -157,6 +157,52 @@ async def get_users_with_periodic_check() -> list[dict]:
         return [dict(row) for row in rows]
 
 
+async def get_non_approved_users_with_periodic_check() -> list[dict]:
+    """
+    Get users without approved status who have periodic checks enabled.
+
+    Approved status is detected by presence of "O seu processo foi deferido."
+    in the last_status field.
+
+    Returns:
+        list[dict]: List of non-approved user records
+    """
+    async with aiosqlite.connect(settings.database_path) as conn:
+        conn.row_factory = aiosqlite.Row
+        cursor = await conn.execute("""
+            SELECT * FROM users
+            WHERE periodic_check_enabled = 1
+            AND (last_status IS NULL OR last_status NOT LIKE '%O seu processo foi deferido.%')
+            ORDER BY id
+        """)
+
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+
+
+async def get_approved_users_with_periodic_check() -> list[dict]:
+    """
+    Get users with approved status who have periodic checks enabled.
+
+    Approved status is detected by presence of "O seu processo foi deferido."
+    in the last_status field.
+
+    Returns:
+        list[dict]: List of approved user records
+    """
+    async with aiosqlite.connect(settings.database_path) as conn:
+        conn.row_factory = aiosqlite.Row
+        cursor = await conn.execute("""
+            SELECT * FROM users
+            WHERE periodic_check_enabled = 1
+            AND last_status LIKE '%O seu processo foi deferido.%'
+            ORDER BY id
+        """)
+
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+
+
 async def delete_user(telegram_user_id: int) -> None:
     """
     Delete a user and all their data.
