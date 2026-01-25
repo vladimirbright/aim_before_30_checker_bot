@@ -34,8 +34,8 @@ Automated service to check AIMA (Agência para a Integração, Migrações e Asi
 
 1. Clone the repository:
    ```bash
-   git clone <repository-url>
-   cd EAIMA
+   git clone https://github.com/vladimirbright/aima_before_30_checker_bot.git
+   cd aima_before_30_checker_bot
    ```
 
 2. Create `.env` file from example:
@@ -113,7 +113,7 @@ The server will start with auto-reload enabled at `http://localhost:8000`
 ### Project Structure
 
 ```
-EAIMA/
+aima_before_30_checker_bot/
 ├── app/
 │   ├── main.py              # FastAPI application
 │   ├── config.py            # Configuration settings
@@ -152,8 +152,8 @@ EAIMA/
 
 3. Clone repository and configure:
    ```bash
-   git clone <repository-url>
-   cd EAIMA
+   git clone https://github.com/vladimirbright/aima_before_30_checker_bot.git
+   cd aima_before_30_checker_bot
    cp .env.example .env
    nano .env  # Edit with your bot token
    ```

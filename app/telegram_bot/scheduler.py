@@ -27,6 +27,42 @@ MORNING_HOUR = 10  # 10 AM
 EVENING_HOUR = 19  # 7 PM
 
 
+def should_check_approved_user(user: dict, current_time: datetime) -> bool:
+    """
+    Determine if approved user should be checked.
+
+    Rules:
+    - Only during 9 AM - 9 PM Lisbon time
+    - At least 3 hours since last check
+
+    Args:
+        user: User record with last_checked_at field
+        current_time: Current time in Lisbon timezone
+
+    Returns:
+        bool: True if user should be checked
+    """
+    # Check if current hour is in 9 AM - 9 PM range
+    if current_time.hour < 9 or current_time.hour > 21:
+        return False
+
+    # Check if 3+ hours since last check
+    last_checked = user.get('last_checked_at')
+    if not last_checked:
+        return True  # Never checked, should check
+
+    try:
+        last_check_time = datetime.fromisoformat(last_checked)
+        # Make timezone aware if needed
+        if last_check_time.tzinfo is None:
+            last_check_time = pytz.utc.localize(last_check_time)
+
+        hours_since_check = (current_time - last_check_time).total_seconds() / 3600
+        return hours_since_check >= 3.0
+    except (ValueError, TypeError):
+        return True  # Error parsing, default to checking
+
+
 class StatusScheduler:
     """Manages periodic status checks for all users."""
 
@@ -54,9 +90,10 @@ class StatusScheduler:
         )
 
         # Schedule morning notifications (10 AM Lisbon time)
+        # Offset by 5 minutes to avoid overlap with hourly checks at minute=0
         self.scheduler.add_job(
             self.send_scheduled_notifications,
-            trigger=CronTrigger(hour=MORNING_HOUR, minute=0, timezone=LISBON_TZ),
+            trigger=CronTrigger(hour=MORNING_HOUR, minute=5, timezone=LISBON_TZ),
             id='morning_notifications',
             kwargs={'is_morning': True}
         )
@@ -85,28 +122,53 @@ class StatusScheduler:
     async def run_hourly_checks(self):
         """
         Run hourly status checks for all users with periodic checks enabled.
+
+        Non-approved users: Check every hour (existing behavior)
+        Approved users: Check every 3 hours, only during 9 AM - 9 PM
+
         Distributes checks evenly across the hour with jitter.
         """
         try:
-            # Get all users with periodic checks enabled
-            users = await user_service.get_users_with_periodic_check()
+            # Get current time in Lisbon timezone for time window check
+            now_lisbon = datetime.now(LISBON_TZ)
 
-            if not users:
-                logger.info("No users with periodic checks enabled")
+            # Fetch non-approved and approved users separately
+            non_approved_users = await user_service.get_non_approved_users_with_periodic_check()
+            approved_users = await user_service.get_approved_users_with_periodic_check()
+
+            # Filter approved users by 3-hour rule and time window
+            eligible_approved = [
+                u for u in approved_users
+                if should_check_approved_user(u, now_lisbon)
+            ]
+
+            # Combine users to process
+            users_to_process = non_approved_users + eligible_approved
+
+            if not users_to_process:
+                logger.info(
+                    f"No users to check this hour "
+                    f"({len(non_approved_users)} non-approved, "
+                    f"{len(eligible_approved)}/{len(approved_users)} approved)"
+                )
                 return
 
-            num_users = len(users)
-            logger.info(f"Starting hourly checks for {num_users} users")
+            num_users = len(users_to_process)
+            logger.info(
+                f"Starting hourly checks for {num_users} users "
+                f"({len(non_approved_users)} non-approved, "
+                f"{len(eligible_approved)}/{len(approved_users)} approved)"
+            )
 
             # Calculate even distribution across 60 minutes
             # Leave some buffer time (50 minutes instead of 60)
             interval_seconds = (50 * 60) / num_users if num_users > 0 else 60
 
             # Shuffle users to randomize order
-            random.shuffle(users)
+            random.shuffle(users_to_process)
 
             # Process each user sequentially with delays
-            for i, user in enumerate(users):
+            for i, user in enumerate(users_to_process):
                 try:
                     # Add small random jitter (±2 minutes)
                     jitter = random.uniform(-120, 120)
@@ -210,6 +272,9 @@ class StatusScheduler:
         """
         Send scheduled notifications at 10 AM or 7 PM.
 
+        10 AM: Send to all users (approved and non-approved)
+        7 PM: Send only to non-approved users (skip approved)
+
         Args:
             is_morning: True for 10 AM, False for 7 PM
         """
@@ -217,7 +282,14 @@ class StatusScheduler:
         logger.info(f"Sending {time_str} scheduled notifications")
 
         try:
-            users = await user_service.get_users_with_periodic_check()
+            # Choose user query based on time of day
+            if is_morning:
+                users = await user_service.get_users_with_periodic_check()
+            else:
+                # 7 PM: Skip approved users
+                users = await user_service.get_non_approved_users_with_periodic_check()
+
+            logger.info(f"Processing {len(users)} users for {time_str} notification")
 
             for user in users:
                 try:

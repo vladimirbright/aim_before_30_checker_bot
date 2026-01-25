@@ -60,11 +60,15 @@ Both the Telegram bot and web interface run concurrently in the same FastAPI pro
 - Credentials stored encrypted in database, never in plaintext
 
 **Scheduler (app/telegram_bot/scheduler.py)**
-- **Hourly checks**: Distributed evenly across users (50-minute window with ±2min jitter)
-- **Scheduled notifications**: 10 AM and 7 PM Lisbon time
+- **Status-based check frequency**: Different check patterns based on application status
+  - **Pending/Under Review**: Hourly checks distributed across 50-minute window with ±2min jitter
+  - **Approved** (status contains "O seu processo foi deferido."): Checks every 3 hours, only during 9 AM - 9 PM Lisbon time
+- **Scheduled notifications**:
+  - **10 AM**: Sent to all users (pending and approved)
+  - **7 PM**: Sent only to users with pending applications (approved users skipped)
 - **Smart notifications**:
   - Immediate notification if status changes
-  - Scheduled updates at 10 AM/7 PM if no change
+  - Scheduled updates at 10 AM/7 PM if no change (pending only for 7 PM)
   - Errors only reported during scheduled times
 - Users processed sequentially to avoid overloading AIMA servers
 
@@ -118,10 +122,29 @@ data/                          # SQLite database (created on first run)
 - The actual status text is in a `<ul>` element inside that cell
 
 ### Scheduler Behavior
-- Hourly checks spread users across 50 minutes (not 60) to leave buffer
+
+#### Status-Based Check Frequency
+
+The system uses a two-tier checking strategy based on application status:
+
+**Pending/Under Review Applications:**
+- Hourly checks distributed across 50-minute window (not 60) to leave buffer
 - Random ±2 minute jitter prevents predictable patterns
+- Scheduled notifications at 10 AM and 7 PM Lisbon time
+- Detection: Applications without "O seu processo foi deferido." in status
+
+**Approved Applications** (containing "O seu processo foi deferido."):
+- Checks every 3 hours, only during 9 AM - 9 PM Lisbon time
+- Scheduled notification at 10 AM only (7 PM notification skipped)
+- Rationale: Approved applications change less frequently, reduces server load
+- Time window check: `9 <= hour <= 21` (inclusive, covers 9:00-21:59)
+- 3-hour interval: Uses `total_seconds() / 3600 >= 3.0` for precision
+
+**Common Behavior:**
 - Sequential processing (one user at a time) prevents simultaneous AIMA requests
 - First check of the hour starts immediately, subsequent checks are delayed
+- SQL filtering on `last_status` field to segment users (no additional database fields)
+- Self-healing: Status changes automatically adjust check frequency on next run
 
 ### Security
 - Each user's data encrypted with unique key from bot token + user ID

@@ -176,12 +176,19 @@ async def periodic_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         if enabled:
             await query.edit_message_text(
                 "✅ Periodic checks enabled!\n\n"
-                "I will check your status every hour and notify you immediately if there are any changes.\n"
-                "Additionally, I'll send you updates at 10 AM and 7 PM (Lisbon time) even if there's no change.\n\n"
+                "*For pending applications:*\n"
+                "• Hourly status checks\n"
+                "• Daily updates at 10 AM and 7 PM (Lisbon time)\n"
+                "• Immediate notification on any changes\n\n"
+                "*For approved applications (deferido):*\n"
+                "• Checks every 3 hours during daytime (9 AM - 9 PM)\n"
+                "• Daily update at 10 AM only\n"
+                "• Immediate notification on any changes\n\n"
                 "Commands:\n"
                 "/status - Check status now\n"
                 "/stop - Disable periodic checks\n"
-                "/delete - Delete all your data"
+                "/delete - Delete all your data",
+                parse_mode='Markdown'
             )
         else:
             await query.edit_message_text(
@@ -310,9 +317,13 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "🔄 Data is auto-deleted if you block the bot\n"
         "🔐 Your password is never stored in plain text\n\n"
         "*Monitoring Schedule:*\n"
-        "• Checks every hour with smart distribution\n"
-        "• Immediate notification on status changes\n"
+        "_Pending applications:_\n"
+        "• Hourly checks with smart distribution\n"
         "• Daily updates at 10 AM & 7 PM if no changes\n\n"
+        "_Approved applications (deferido):_\n"
+        "• Checks every 3 hours during daytime (9 AM - 9 PM)\n"
+        "• Daily update at 10 AM only\n\n"
+        "• Immediate notifications on any status changes\n\n"
         "Need help? Just ask! 😊"
     )
 
