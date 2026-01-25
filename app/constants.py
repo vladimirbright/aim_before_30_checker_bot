@@ -56,6 +56,9 @@ USER_AGENTS = [
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0",
 ]
 
+# Status marker indicating approved application
+APPROVED_STATUS_MARKER = "O seu processo foi deferido."
+
 
 def get_user_agent_for_user(telegram_user_id: int) -> str:
     """

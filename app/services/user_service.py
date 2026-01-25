@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Optional
 import aiosqlite
 from app.config import settings
+from app.constants import APPROVED_STATUS_MARKER
 
 
 async def create_user(
@@ -161,7 +162,7 @@ async def get_non_approved_users_with_periodic_check() -> list[dict]:
     """
     Get users without approved status who have periodic checks enabled.
 
-    Approved status is detected by presence of "O seu processo foi deferido."
+    Approved status is detected by presence of APPROVED_STATUS_MARKER
     in the last_status field.
 
     Returns:
@@ -169,10 +170,10 @@ async def get_non_approved_users_with_periodic_check() -> list[dict]:
     """
     async with aiosqlite.connect(settings.database_path) as conn:
         conn.row_factory = aiosqlite.Row
-        cursor = await conn.execute("""
+        cursor = await conn.execute(f"""
             SELECT * FROM users
             WHERE periodic_check_enabled = 1
-            AND (last_status IS NULL OR last_status NOT LIKE '%O seu processo foi deferido.%')
+            AND (last_status IS NULL OR last_status NOT LIKE '%{APPROVED_STATUS_MARKER}%')
             ORDER BY id
         """)
 
@@ -184,7 +185,7 @@ async def get_approved_users_with_periodic_check() -> list[dict]:
     """
     Get users with approved status who have periodic checks enabled.
 
-    Approved status is detected by presence of "O seu processo foi deferido."
+    Approved status is detected by presence of APPROVED_STATUS_MARKER
     in the last_status field.
 
     Returns:
@@ -192,10 +193,10 @@ async def get_approved_users_with_periodic_check() -> list[dict]:
     """
     async with aiosqlite.connect(settings.database_path) as conn:
         conn.row_factory = aiosqlite.Row
-        cursor = await conn.execute("""
+        cursor = await conn.execute(f"""
             SELECT * FROM users
             WHERE periodic_check_enabled = 1
-            AND last_status LIKE '%O seu processo foi deferido.%'
+            AND last_status LIKE '%{APPROVED_STATUS_MARKER}%'
             ORDER BY id
         """)
 

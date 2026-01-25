@@ -90,9 +90,10 @@ class StatusScheduler:
         )
 
         # Schedule morning notifications (10 AM Lisbon time)
+        # Offset by 5 minutes to avoid overlap with hourly checks at minute=0
         self.scheduler.add_job(
             self.send_scheduled_notifications,
-            trigger=CronTrigger(hour=MORNING_HOUR, minute=0, timezone=LISBON_TZ),
+            trigger=CronTrigger(hour=MORNING_HOUR, minute=5, timezone=LISBON_TZ),
             id='morning_notifications',
             kwargs={'is_morning': True}
         )
